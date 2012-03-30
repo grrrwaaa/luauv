@@ -3,4 +3,7 @@
 *.so
 *.spec
 *.DS_Store
+*.pbxuser
+*.perspectivev3
+*.so.dSYM
 build

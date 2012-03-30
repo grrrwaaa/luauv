@@ -1,0 +1,461 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 45;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		3680E57B152678E60087484A /* xcodebuild_and_test */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 3680E58D152679240087484A /* Build configuration list for PBXAggregateTarget "xcodebuild_and_test" */;
+			buildPhases = (
+			);
+			dependencies = (
+				3680E5831526790B0087484A /* PBXTargetDependency */,
+				3680E585152679120087484A /* PBXTargetDependency */,
+			);
+			name = xcodebuild_and_test;
+			productName = xcodebuild_and_test;
+		};
+		3680E57F152678F10087484A /* test */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 3680E58C152679240087484A /* Build configuration list for PBXAggregateTarget "test" */;
+			buildPhases = (
+				3680E57E152678F10087484A /* ShellScript */,
+			);
+			dependencies = (
+			);
+			name = test;
+			productName = test;
+		};
+		36ED4F681523773700951211 /* lake */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 36ED4F781523776A00951211 /* Build configuration list for PBXAggregateTarget "lake" */;
+			buildPhases = (
+				36ED4F671523773700951211 /* ShellScript */,
+			);
+			dependencies = (
+			);
+			name = lake;
+			productName = test;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		3680E566152678200087484A /* luaopen_uv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 36ED4F58152376C400951211 /* luaopen_uv.cpp */; };
+		3680E593152679810087484A /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3680E592152679810087484A /* libuv.a */; };
+		3680E5A1152679DA0087484A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3680E594152679990087484A /* Cocoa.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3680E5821526790B0087484A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 08FB7793FE84155DC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3680E560152677E00087484A /* uv */;
+			remoteInfo = uv;
+		};
+		3680E584152679120087484A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 08FB7793FE84155DC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3680E57F152678F10087484A /* test */;
+			remoteInfo = test;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		3680E561152677E00087484A /* uv.so */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = uv.so; sourceTree = BUILT_PRODUCTS_DIR; };
+		3680E592152679810087484A /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libuv.a; sourceTree = "<group>"; };
+		3680E594152679990087484A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		36ED4F58152376C400951211 /* luaopen_uv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = luaopen_uv.cpp; sourceTree = "<group>"; };
+		36ED4F5B152376D600951211 /* lakefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lakefile; sourceTree = "<group>"; };
+		36ED4F771523776A00951211 /* test.uv.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.lua; path = test.uv.lua; sourceTree = "<group>"; };
+		36ED4F7F1523781200951211 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		36ED4FC615237C9B00951211 /* ares.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ares.h; sourceTree = "<group>"; };
+		36ED4FC715237C9B00951211 /* ares_version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ares_version.h; sourceTree = "<group>"; };
+		36ED4FC915237C9B00951211 /* eio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = eio.h; sourceTree = "<group>"; };
+		36ED4FCA15237C9B00951211 /* ev.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ev.h; sourceTree = "<group>"; };
+		36ED4FCB15237C9B00951211 /* ngx-queue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ngx-queue.h"; sourceTree = "<group>"; };
+		36ED4FCC15237C9B00951211 /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tree.h; sourceTree = "<group>"; };
+		36ED4FCD15237C9B00951211 /* uv-unix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "uv-unix.h"; sourceTree = "<group>"; };
+		36ED4FCE15237C9B00951211 /* uv-win.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "uv-win.h"; sourceTree = "<group>"; };
+		36ED4FCF15237C9B00951211 /* uv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = uv.h; sourceTree = "<group>"; };
+		36ED5CDD1523A19900951211 /* al_Lua.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = al_Lua.hpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3680E55F152677E00087484A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3680E5A1152679DA0087484A /* Cocoa.framework in Frameworks */,
+				3680E593152679810087484A /* libuv.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08FB7794FE84155DC02AAC07 /* uv */ = {
+			isa = PBXGroup;
+			children = (
+				36ED4F7F1523781200951211 /* README.md */,
+				36ED4F5B152376D600951211 /* lakefile */,
+				36ED4FC515237C9B00951211 /* include */,
+				3680E590152679810087484A /* osx */,
+				36ED5CDD1523A19900951211 /* al_Lua.hpp */,
+				36ED4F58152376C400951211 /* luaopen_uv.cpp */,
+				36ED4F771523776A00951211 /* test.uv.lua */,
+				3680E561152677E00087484A /* uv.so */,
+			);
+			name = uv;
+			sourceTree = "<group>";
+		};
+		3680E590152679810087484A /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				3680E591152679810087484A /* lib */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		3680E591152679810087484A /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				3680E592152679810087484A /* libuv.a */,
+				3680E594152679990087484A /* Cocoa.framework */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		36ED4FC515237C9B00951211 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				36ED4FC615237C9B00951211 /* ares.h */,
+				36ED4FC715237C9B00951211 /* ares_version.h */,
+				36ED4FC815237C9B00951211 /* uv-private */,
+				36ED4FCF15237C9B00951211 /* uv.h */,
+			);
+			name = include;
+			path = libuv/include;
+			sourceTree = "<group>";
+		};
+		36ED4FC815237C9B00951211 /* uv-private */ = {
+			isa = PBXGroup;
+			children = (
+				36ED4FC915237C9B00951211 /* eio.h */,
+				36ED4FCA15237C9B00951211 /* ev.h */,
+				36ED4FCB15237C9B00951211 /* ngx-queue.h */,
+				36ED4FCC15237C9B00951211 /* tree.h */,
+				36ED4FCD15237C9B00951211 /* uv-unix.h */,
+				36ED4FCE15237C9B00951211 /* uv-win.h */,
+			);
+			path = "uv-private";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		3680E55D152677E00087484A /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		3680E560152677E00087484A /* uv */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3680E5691526784A0087484A /* Build configuration list for PBXNativeTarget "uv" */;
+			buildPhases = (
+				3680E55D152677E00087484A /* Headers */,
+				3680E55E152677E00087484A /* Sources */,
+				3680E55F152677E00087484A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = uv;
+			productName = uv;
+			productReference = 3680E561152677E00087484A /* uv.so */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB919308733D9F0010E9CD /* Build configuration list for PBXProject "uv" */;
+			compatibilityVersion = "Xcode 3.1";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
+			mainGroup = 08FB7794FE84155DC02AAC07 /* uv */;
+			productRefGroup = 08FB7794FE84155DC02AAC07 /* uv */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3680E560152677E00087484A /* uv */,
+				36ED4F681523773700951211 /* lake */,
+				3680E57F152678F10087484A /* test */,
+				3680E57B152678E60087484A /* xcodebuild_and_test */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3680E57E152678F10087484A /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here\nlua test.uv.lua\nexit 0";
+		};
+		36ED4F671523773700951211 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here\nlake clean && lake\nexit 0";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3680E55E152677E00087484A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3680E566152678200087484A /* luaopen_uv.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3680E5831526790B0087484A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3680E560152677E00087484A /* uv */;
+			targetProxy = 3680E5821526790B0087484A /* PBXContainerItemProxy */;
+		};
+		3680E585152679120087484A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3680E57F152678F10087484A /* test */;
+			targetProxy = 3680E584152679120087484A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB919408733D9F0010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
+				SDKROOT = macosx10.6;
+			};
+			name = Debug;
+		};
+		1DEB919508733D9F0010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
+				SDKROOT = macosx10.6;
+			};
+			name = Release;
+		};
+		3680E562152677E00087484A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/../";
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = so;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					osx/lib,
+					/usr/local/lib,
+					"\"$(SRCROOT)/osx/lib\"",
+				);
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = $TARGET_NAME;
+				USER_HEADER_SEARCH_PATHS = "libuv/include /usr/local/include";
+			};
+			name = Debug;
+		};
+		3680E563152677E00087484A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/../";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_EXTENSION = so;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					osx/lib,
+					/usr/local/lib,
+					"\"$(SRCROOT)/osx/lib\"",
+				);
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = $TARGET_NAME;
+				USER_HEADER_SEARCH_PATHS = "libuv/include /usr/local/include";
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		3680E57C152678E60087484A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = xcodebuild_and_test;
+			};
+			name = Debug;
+		};
+		3680E57D152678E60087484A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				PRODUCT_NAME = xcodebuild_and_test;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		3680E580152678F10087484A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = test;
+			};
+			name = Debug;
+		};
+		3680E581152678F10087484A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				PRODUCT_NAME = test;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		36ED4F691523773700951211 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = test;
+			};
+			name = Debug;
+		};
+		36ED4F6A1523773700951211 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				PRODUCT_NAME = test;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB919308733D9F0010E9CD /* Build configuration list for PBXProject "uv" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB919408733D9F0010E9CD /* Debug */,
+				1DEB919508733D9F0010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3680E5691526784A0087484A /* Build configuration list for PBXNativeTarget "uv" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3680E562152677E00087484A /* Debug */,
+				3680E563152677E00087484A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3680E58C152679240087484A /* Build configuration list for PBXAggregateTarget "test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3680E580152678F10087484A /* Debug */,
+				3680E581152678F10087484A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3680E58D152679240087484A /* Build configuration list for PBXAggregateTarget "xcodebuild_and_test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3680E57C152678E60087484A /* Debug */,
+				3680E57D152678E60087484A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		36ED4F781523776A00951211 /* Build configuration list for PBXAggregateTarget "lake" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				36ED4F691523773700951211 /* Debug */,
+				36ED4F6A1523773700951211 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

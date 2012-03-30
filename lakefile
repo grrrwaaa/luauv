@@ -1,0 +1,19 @@
+
+UV_INCLUDE_DIR = "libuv/include"
+UV_LIBS = "uv"
+
+local libflags
+
+if PLAT == "Darwin" then
+	UV_LIB_DIR = "osx/lib"
+	libflags = "-framework Cocoa"
+else
+	UV_LIB_DIR = "/usr/local/lib"
+end
+
+cpp.shared{
+	"uv",
+	src = "luaopen_uv.cpp",
+	needs = { "uv", "lua" },
+	libflags = libflags,
+}
