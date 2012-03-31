@@ -14,10 +14,12 @@ Build on OSX using the Xcode 3 project, or using a lakefile for https://github.c
 
 Should be possible to build on Linux using lake, but as yet untested.
 
-### See also
+### See also these other Lua/LibUV projects:
 
 https://github.com/luvit/luvit
+
 https://github.com/bnoordhuis/lua-uv/
+
 https://github.com/ignacio/LuaNode
 
 ### License

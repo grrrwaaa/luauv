@@ -32,10 +32,12 @@ demo "uv.exepath()"
 demo "uv.cwd()"
 demo [[uv.chdir(uv.cwd() .. "/libuv")]]
 demo "uv.cwd()"
+demo [[uv.chdir(uv.cwd() .. "/..")]]
+demo "uv.cwd()"
 
 -- run file IO as a coroutine for asynchronous yielding behavior:
 local filedemo = function()
-	local path = uv.cwd() .. "/LICENSE"
+	local path = uv.cwd() .. "/README.md"
 	local stat = uv.fs_stat(path)
 	print("stat", path)
 	for k, v in pairs(stat) do print(path, k, v) end
