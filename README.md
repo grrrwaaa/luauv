@@ -1,6 +1,6 @@
 # LuaUV
 
-A Lua wrapper of some parts of https://github.com/joyent/libuv
+A Lua wrapper of some parts of https://github.com/joyent/libuv (the platform abstraction layer used in node.js)
 
 This wrapper aims to be Lua-centric, and coroutine-centric, but is certainly far from comprehensive!
 
@@ -10,7 +10,7 @@ Libuv's event handling loop can be driven manually using uv.run_once(), or can t
 
 ### Building
 
-Build on OSX using the Xcode 3 project, or using a lakefile for Steve Donovan's https://github.com/stevedonovan/Lake
+Build on OSX using the Xcode 3 project, or using a lakefile for https://github.com/stevedonovan/Lake
 
 Should be possible to build on Linux using lake, but as yet untested.
 

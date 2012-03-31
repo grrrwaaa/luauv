@@ -28,6 +28,21 @@ template<> const char * classname<uv_loop_t>() { return "uv_loop"; }
 template<> const char * classname<uv_timer_t>() { return "uv_timer"; }
 template<> const char * classname<uv_file>() { return "uv_file"; }
 
+
+template<typename T>
+T * lua_generic_object(lua_State * L, int idx=1) {
+	T * v = (T *)luaL_checkudata(L, idx, classname<T>());
+	if (v==0) luaL_error(L, "missing object");
+	return v;
+}
+
+template<typename T>
+int lua_generic___tostring(lua_State * L) {
+	T * t = lua_generic_object<T>(L, 1);
+	lua_pushfstring(L, "%s(%p)", classname<T>(), t);
+	return 1;
+}
+
 // grab the loop from the closure:
 #define lua_uv_loop(L) (*(uv_loop_t **)luaL_checkudata(L, lua_upvalueindex(1), classname<uv_loop_t>()))
 
@@ -83,14 +98,6 @@ int lua_uv_close_handle(lua_State * L, int idx=1) {
 	// request callback for memory release:
 	uv_close(handle, lua_uv_close_handle_cb);
 	return 0;
-}
-
-
-template<typename T>
-T * lua_uv_object(lua_State * L, int idx=1) {
-	T * v = (T *)luaL_checkudata(L, idx, classname<T>());
-	if (v==0) luaL_error(L, "missing object");
-	return v;
 }
 
 #pragma mark requests
@@ -193,6 +200,12 @@ int lua_uv_update_time(lua_State * L) {
 	return 0;
 }
 
+int lua_uv_unref(lua_State * L) {
+	uv_loop_t * v = lua_uv_loop(L);
+	uv_unref(v);
+	return 0;
+}
+
 #pragma mark errors
 
 bool lua_uv_check(lua_State * L, uv_err_t err) {
@@ -225,13 +238,35 @@ int lua_uv_last_error(lua_State * L) {
 
 #pragma mark timers
 
-//	Timer can fire multiple times, so requires a function to callback
+/*	
+	Timer can fire multiple times, so requires a handler function
+		function needs to be locked against __gc while timer exists
+	uv_timer_t allocated as a Lua userdatum, 
+		needs to be locked against __gc while a timer is pending.
+	
+	uv_timer_t callback can retrieve lua_State from loop,
+	Useful to pass the timer userdatum to the handler, for e.g. rescheduling
+		reg[uv_timer_t] = udata
+		reg[udata] = handler
+	
+	Another way is to use a C closure:
+		reg[uv_timer_t] = closure(handler, udata)
+	
+*/
+
+int lua_uv_timer_cb_closure(lua_State * L) {
+	lua_pushvalue(L, lua_upvalueindex(1)); // handler
+	lua_pushvalue(L, lua_upvalueindex(2)); // udata
+	lua_call(L, 1, 0);	// pcall?
+	return 0;
+}
 
 int lua_uv_timer(lua_State * L) {
 	luaL_checktype(L, 1, LUA_TFUNCTION);
 
 	uv_loop_t * loop = lua_uv_loop(L);
 	uv_timer_t * timer = (uv_timer_t *)lua_newuserdata(L, sizeof(uv_timer_t));
+	int udata = lua_gettop(L);
 	uv_timer_init(loop, timer);
 	luaL_getmetatable(L, "uv_timer");
 	lua_setmetatable(L, -2);
@@ -240,15 +275,15 @@ int lua_uv_timer(lua_State * L) {
 	// bind ptr to callback function:
 	lua_pushlightuserdata(L, timer);
 	lua_pushvalue(L, 1);
+	lua_pushvalue(L, udata);
+	lua_pushcclosure(L, lua_uv_timer_cb_closure, 2);
 	lua_rawset(L, LUA_REGISTRYINDEX);
-	
+
 	return 1;
 }
 
 int lua_uv_timer___tostring(lua_State * L) {
-	uv_timer_t * t = lua_uv_object<uv_timer_t>(L, 1);
-	lua_pushfstring(L, "uv.timer(%p)", t);
-	return 1;
+	return lua_generic___tostring<uv_timer_t>(L);
 }
 
 int lua_uv_timer___gc(lua_State * L) {
@@ -258,16 +293,21 @@ int lua_uv_timer___gc(lua_State * L) {
 	return 0;
 }
 
+int lua_uv_timer_close(lua_State * L) {
+	lua_uv_close_handle(L, 1);
+	return 1;
+}
+
 void lua_uv_timer_cb(uv_timer_t* handle, int status) {
 	uv_loop_t * loop = handle->loop;
 	lua_State * L = (lua_State *)loop->data;
 	lua_pushlightuserdata(L, handle);
 	lua_rawget(L, LUA_REGISTRYINDEX);
-	lua_call(L, 0, 0);
+	lua_call(L, 0, 0);	// pcall?
 }
 
 int lua_uv_timer_start(lua_State * L) {
-	uv_timer_t * timer = lua_uv_object<uv_timer_t>(L, 1);
+	uv_timer_t * timer = lua_generic_object<uv_timer_t>(L, 1);
 	int64_t timeout = luaL_optinteger(L, 2, 0);
 	int64_t repeat = luaL_optinteger(L, 3, 0);
 	int result = uv_timer_start(timer, lua_uv_timer_cb, timeout, repeat);
@@ -276,7 +316,7 @@ int lua_uv_timer_start(lua_State * L) {
 }
 
 int lua_uv_timer_stop(lua_State * L) {
-	uv_timer_t * t = lua_uv_object<uv_timer_t>(L, 1);
+	uv_timer_t * t = lua_generic_object<uv_timer_t>(L, 1);
 	printf("stop %d\n", uv_timer_stop(t));
 	return 1;
 }
@@ -779,6 +819,8 @@ int lua_uv_loop_new(lua_State * L) {
 	LUA_UV_CLOSURE(uv, update_time);
 	LUA_UV_CLOSURE(uv, run);
 	LUA_UV_CLOSURE(uv, run_once);
+	
+	LUA_UV_CLOSURE(uv, unref);
 
 	LUA_UV_CLOSURE(uv, last_error);
 	
@@ -814,6 +856,7 @@ extern "C" int luaopen_uv(lua_State * L) {
 	LUA_UV_CLOSURE(uv_timer, __gc);
 	LUA_UV_CLOSURE(uv_timer, start);
 	LUA_UV_CLOSURE(uv_timer, stop);
+	LUA_UV_CLOSURE(uv_timer, close);
 	lua_pop(L, 1);
 	
 	// define uv_file metatable

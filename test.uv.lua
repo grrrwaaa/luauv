@@ -62,17 +62,19 @@ print(string.rep("-", 64))
 print("timer")
 print(string.rep("-", 64))
 
-
-local t = uv.timer(function(...)
-	print("timer callback", uv.now(), ...)
+local start = uv.now()
+local t = uv.timer(function(timer)
+	print("timer callback", uv.now(), timer)
+	if uv.now() < start + 1000 then
+		timer:start(250)
+	else
+		timer:close()
+		print("timer closed:", timer)
+	end
 end)
 print("t", t)
 t:start()
 demo "uv.run_once()"
-
-t:stop()
-t = nil
-collectgarbage()
 
 print(string.rep("-", 64))
 demo "uv.last_error()"
