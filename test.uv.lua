@@ -65,18 +65,32 @@ print("timer")
 print(string.rep("-", 64))
 
 local start = uv.now()
-local t = uv.timer(function(timer)
-	print("timer callback", uv.now(), timer)
+
+local function oneshotcb(timer)
+	print("oneshotcb callback", uv.now(), timer)
 	if uv.now() < start + 1000 then
-		timer:start(250)
+		--timer:start(250)
 	else
 		timer:close()
 		print("timer closed:", timer)
 	end
-end)
-print("t", t)
-t:start()
+end
+
+local t = uv.timer()
+-- start immediately:
+t:start(oneshotcb, 0)
+
 demo "uv.run_once()"
+
+local function repeatcb(timer)
+	print("repeatcb callback", uv.now(), timer)
+	if uv.now() > start + 1000 then
+		timer:close()
+		print("timer closed:", timer)
+	end
+end
+-- start immediately & recur every 250 ms:
+t:start(repeatcb, 0, 250)
 
 print(string.rep("-", 64))
 demo "uv.last_error()"

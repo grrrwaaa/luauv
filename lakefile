@@ -13,7 +13,16 @@ end
 
 cpp.shared{
 	"uv",
-	src = "luaopen_uv.cpp",
+	src = { 
+		"luaopen_uv.cpp", 
+		"lua_uv_handle.cpp",
+		"lua_uv_timer.cpp",
+		"lua_uv_stream.cpp",
+		"lua_uv_tcp.cpp",
+		"lua_uv_tty.cpp", 
+		"lua_uv_fs.cpp", 
+		"lua_uv_dns.cpp", 
+	},
 	needs = { "uv", "lua" },
 	libflags = libflags,
 }

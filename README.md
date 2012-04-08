@@ -22,6 +22,8 @@ https://github.com/bnoordhuis/lua-uv/
 
 https://github.com/ignacio/LuaNode
 
+https://github.com/steveyen/uv
+
 ### License
 
 Released under the same license scheme as Lua (MIT/BSD style)

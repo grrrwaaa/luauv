@@ -10,41 +10,9 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-extern "C" {
-	#include "lua.h"
-	#include "lauxlib.h"
-	#include "uv.h"
-}
+#include "luaopen_uv.h"
 
 #include <string.h>
-#include <fcntl.h>
-
-// lightweight C++ wrapper of Lua API:
-#include "al_Lua.hpp"
-
-// using type traits to attach names to types:
-template<typename T> const char * classname();
-template<> const char * classname<uv_loop_t>() { return "uv_loop"; }
-template<> const char * classname<uv_timer_t>() { return "uv_timer"; }
-template<> const char * classname<uv_file>() { return "uv_file"; }
-
-
-template<typename T>
-T * lua_generic_object(lua_State * L, int idx=1) {
-	T * v = (T *)luaL_checkudata(L, idx, classname<T>());
-	if (v==0) luaL_error(L, "missing object");
-	return v;
-}
-
-template<typename T>
-int lua_generic___tostring(lua_State * L) {
-	T * t = lua_generic_object<T>(L, 1);
-	lua_pushfstring(L, "%s(%p)", classname<T>(), t);
-	return 1;
-}
-
-// grab the loop from the closure:
-#define lua_uv_loop(L) (*(uv_loop_t **)luaL_checkudata(L, lua_upvalueindex(1), classname<uv_loop_t>()))
 
 int lua_uv_loop___tostring(lua_State * L) {
 	lua_pushfstring(L, "uv_loop (%p)", lua_uv_loop(L));
@@ -52,90 +20,21 @@ int lua_uv_loop___tostring(lua_State * L) {
 }
 
 int lua_uv_loop___gc(lua_State * L) {
+	printf("lua_uv_loop___gc\n");
 	lua_pushnil(L);
 	lua_setmetatable(L, 1);
 	uv_loop_delete(lua_uv_loop(L));
 	return 1;
 }
 
-#pragma mark types
-
-
-uv_handle_t * lua_uv_handle_t(lua_State * L, int idx=1) {
-	uv_handle_t * v = (uv_handle_t *)lua_touserdata(L, idx);
-	if (v==0) luaL_error(L, "missing uv_handle_t");
-	return v;
-}
-
-int lua_uv_is_active(lua_State * L) {
-	uv_handle_t* handle = lua_uv_handle_t(L, 1);
-	lua_pushboolean(L, uv_is_active(handle));
-	return 1;
-}
-
-void lua_uv_close_handle_cb(uv_handle_t* handle) {
-	printf("closing handle %p", handle);
-	// where does L come from?
-	uv_loop_t * loop = handle->loop;
-	lua_State * L = (lua_State *)loop->data;
-	// remove the reference and let gc continue normally:
-	lua_pushlightuserdata(L, handle);
-	lua_pushnil(L);
-	lua_rawset(L, LUA_REGISTRYINDEX);
-	//lua_settable(L, LUA_REGISTRYINDEX);
-}
-
-int lua_uv_close_handle(lua_State * L, int idx=1) {
-	uv_handle_t * handle = lua_uv_handle_t(L, idx);
-	// remove metatable:
-	lua_pushnil(L);
-	lua_setmetatable(L, idx);
-	// push a reference to abort gc:
-	lua_pushlightuserdata(L, handle);
-	lua_pushvalue(L, idx);
-	lua_rawset(L, LUA_REGISTRYINDEX);
-	//lua_settable(L, LUA_REGISTRYINDEX);
-	// request callback for memory release:
-	uv_close(handle, lua_uv_close_handle_cb);
-	return 0;
-}
-
-#pragma mark requests
-
-//	A reusable template for one-shot requests.
-//	Creating a request will allocate memory from Lua
-//	The coroutine and userdata are stashed as upvalues of a function in the registry against the request pointer, to prevent garbage collection of any of them while the request is pending.
-//	Releasing the request removes the registry link, allowing the closure & upvalues to be collected.
-
-// a dummy function used just to prevent gc of its upvalues
-int lua_uv_request_closure(lua_State * L) { return 0; }
-
-// expects the coroutine to already be on the top of the stack:
-template<typename T>
-T * make_request(lua_State * L) {
-	//lua_pushthread(L);	// already there
-	T * req = (T *)lua_newuserdata(L, sizeof(T));
-	// cache to prevent gc
-	// making a closure as a way to store two values against the ptr
-	lua_pushcclosure(L, lua_uv_request_closure, 2);
-	lua_pushlightuserdata(L, req);
-	lua_insert(L, -2);
-	// registry[req] = closure(coro, udata):
-	lua_rawset(L, LUA_REGISTRYINDEX);	
-	// request needs to know the lua_State ptr:
-	req->data = L;	
-	return req;
-}
-
-template<typename T>
-void release_request(lua_State * L, T * req) {
-	lua_pushlightuserdata(L, req);
-	lua_pushnil(L);
-	lua_rawset(L, LUA_REGISTRYINDEX);	// registry[req] = nil
-}
-
-
 #pragma mark buffers
+
+uv_buf_t lua_uv_alloc(uv_handle_t *, size_t suggested_size) {
+	uv_buf_t buf;
+	buf.base = (char *)malloc(suggested_size);
+	buf.len = suggested_size;
+	return buf;
+}
 
 /*
 	expects an integer size on the top of the stack
@@ -149,17 +48,23 @@ void release_request(lua_State * L, T * req) {
 */
 uv_buf_t * lua_uv_buf_init(lua_State * L, size_t len) {
 	uv_buf_t * buf = (uv_buf_t *)lua_newuserdata(L, sizeof(uv_buf_t) + len);
-	buf->base = (char *)(buf + 1);
+	buf->base = (char *)(buf + sizeof(uv_buf_t));
 	buf->len = len;
 	
-	// TODO: set uv_buf_t metatable
+	luaL_getmetatable(L, classname<uv_buf_t>());
+	lua_setmetatable(L, -2);
 	return buf;
 }
 
-int lua_uv_buf_init(lua_State * L) {
-	size_t len = luaL_checkinteger(L, -1);
-	lua_uv_buf_init(L, len);
-	return 1;
+uv_buf_t * lua_uv_buf_init(lua_State * L, char * data, size_t len) {
+	uv_buf_t * buf = lua_uv_buf_init(L, len);
+	memcpy(buf->base, data, len);
+	return buf;
+}
+
+int lua_uv_buf___gc(lua_State * L) {
+	printf("buf gc\n");
+	return 0;
 }
 
 #pragma mark loops
@@ -234,413 +139,6 @@ int lua_uv_last_error(lua_State * L) {
 	lua_pushstring(L, uv_strerror(err));
 	lua_pushstring(L, uv_err_name(err));
 	return 3;
-}
-
-#pragma mark timers
-
-/*	
-	Timer can fire multiple times, so requires a handler function
-		function needs to be locked against __gc while timer exists
-	uv_timer_t allocated as a Lua userdatum, 
-		needs to be locked against __gc while a timer is pending.
-	
-	uv_timer_t callback can retrieve lua_State from loop,
-	Useful to pass the timer userdatum to the handler, for e.g. rescheduling
-		reg[uv_timer_t] = udata
-		reg[udata] = handler
-	
-	Another way is to use a C closure:
-		reg[uv_timer_t] = closure(handler, udata)
-	
-*/
-
-int lua_uv_timer_cb_closure(lua_State * L) {
-	lua_pushvalue(L, lua_upvalueindex(1)); // handler
-	lua_pushvalue(L, lua_upvalueindex(2)); // udata
-	lua_call(L, 1, 0);	// pcall?
-	return 0;
-}
-
-int lua_uv_timer(lua_State * L) {
-	luaL_checktype(L, 1, LUA_TFUNCTION);
-
-	uv_loop_t * loop = lua_uv_loop(L);
-	uv_timer_t * timer = (uv_timer_t *)lua_newuserdata(L, sizeof(uv_timer_t));
-	int udata = lua_gettop(L);
-	uv_timer_init(loop, timer);
-	luaL_getmetatable(L, "uv_timer");
-	lua_setmetatable(L, -2);
-	lua_uv_ok(L);
-	
-	// bind ptr to callback function:
-	lua_pushlightuserdata(L, timer);
-	lua_pushvalue(L, 1);
-	lua_pushvalue(L, udata);
-	lua_pushcclosure(L, lua_uv_timer_cb_closure, 2);
-	lua_rawset(L, LUA_REGISTRYINDEX);
-
-	return 1;
-}
-
-int lua_uv_timer___tostring(lua_State * L) {
-	return lua_generic___tostring<uv_timer_t>(L);
-}
-
-int lua_uv_timer___gc(lua_State * L) {
-	// is it necessary to call uv_timer_stop?
-	// close handle (asynchronously):
-	lua_uv_close_handle(L, 1);
-	return 0;
-}
-
-int lua_uv_timer_close(lua_State * L) {
-	lua_uv_close_handle(L, 1);
-	return 1;
-}
-
-void lua_uv_timer_cb(uv_timer_t* handle, int status) {
-	uv_loop_t * loop = handle->loop;
-	lua_State * L = (lua_State *)loop->data;
-	lua_pushlightuserdata(L, handle);
-	lua_rawget(L, LUA_REGISTRYINDEX);
-	lua_call(L, 0, 0);	// pcall?
-}
-
-int lua_uv_timer_start(lua_State * L) {
-	uv_timer_t * timer = lua_generic_object<uv_timer_t>(L, 1);
-	int64_t timeout = luaL_optinteger(L, 2, 0);
-	int64_t repeat = luaL_optinteger(L, 3, 0);
-	int result = uv_timer_start(timer, lua_uv_timer_cb, timeout, repeat);
-	lua_pushinteger(L, result);
-	return 1;
-}
-
-int lua_uv_timer_stop(lua_State * L) {
-	uv_timer_t * t = lua_generic_object<uv_timer_t>(L, 1);
-	printf("stop %d\n", uv_timer_stop(t));
-	return 1;
-}
-
-#pragma mark filesystem
-
-int lua_uv_string_to_flags(lua_State* L, const char* string) {
-	if (strcmp(string, "r") == 0) return O_RDONLY;
-	if (strcmp(string, "r+") == 0) return O_RDWR;
-	if (strcmp(string, "w") == 0) return O_CREAT | O_TRUNC | O_WRONLY;
-	if (strcmp(string, "w+") == 0) return O_CREAT | O_TRUNC | O_RDWR;
-	if (strcmp(string, "a") == 0) return O_APPEND | O_CREAT | O_WRONLY;
-	if (strcmp(string, "a+") == 0) return O_APPEND | O_CREAT | O_RDWR;
-	return luaL_error(L, "Unknown file open flag'%s'", string);
-}
-
-uv_file lua_uv_check_file(lua_State * L, int idx=-1) {
-	return *(uv_file *)luaL_checkudata(L, idx, classname<uv_file>());
-}
-
-int lua_uv_fs___tostring(lua_State * L) {
-	uv_file f = lua_uv_check_file(L, 1);
-	lua_pushfstring(L, "uv.file(%d)", f);
-	return 1;
-}
-
-void lua_uv_fs_close_cb(uv_fs_t* req) {
-	lua_State * L = (lua_State *)req->data;
-	int results = 0;
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);
-}
-
-int lua_uv_fs_close(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	uv_file file = lua_uv_check_file(L, 1);
-	
-	// unset metatable on f:
-	lua_pushnil(L);
-	lua_setmetatable(L, 1);
-	
-	// are we in a coroutine?
-	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_fs_t req;
-		int res = uv_fs_close(loop, &req, file, NULL);
-		if (res < 0) luaL_error(L, "fs_close (%d)", res);
-		lua_uv_ok(L);
-		return 0;
-	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_close(loop, req, file, lua_uv_fs_close_cb);
-		return lua_yield(L, 0);
-	}
-}
-
-int lua_uv_fs___gc(lua_State * L) {
-	return lua_uv_fs_close(L);
-}
-
-int lua_uv_fs_open_result(lua_State * L, uv_fs_t* req) {
-	ssize_t result = req->result;
-	if (req->result < 0) {
-		lua_pushnil(L);
-		lua_pushstring(L, "fs_open error");
-		lua_pushinteger(L, req->result);
-		return 3;
-	}
-	// create new userdata containing file:
-	*(uv_file *)lua_newuserdata(L, sizeof(uv_file *)) = (uv_file)result;
-	luaL_getmetatable(L, "uv_file");
-	lua_setmetatable(L, -2);
-	return 1;
-}
-
-void lua_uv_fs_open_cb(uv_fs_t* req) {
-	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_open_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);
-}
-
-int lua_uv_fs_open(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	const char * path = luaL_checkstring(L, 1);
-	int flags = lua_uv_string_to_flags(L, luaL_optstring(L, 2, "r"));
-	int mode = strtoul(luaL_optstring(L, 3, "0666"), NULL, 8);
-	
-	// are we in a coroutine?
-	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_fs_t req;
-		uv_fs_open(loop, &req, path, flags, mode, NULL);
-		return lua_uv_fs_open_result(L, &req);
-	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_open(loop, req, path, flags, mode, lua_uv_fs_open_cb);
-		return lua_yield(L, 0);
-	}
-}
-
-void lua_uv_fs_read_cb(uv_fs_t* req) {
-	Lua L((lua_State *)req->data);
-	uv_buf_t * buf = (uv_buf_t *)lua_touserdata(L, 1);
-	lua_pushstring(L, buf->base);
-	
-	uv_fs_req_cleanup(req);
-	delete req;
-	
-	L.resume(1);
-}
-
-int lua_uv_fs_read(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	uv_file file = lua_uv_check_file(L, 1);
-	size_t size = (size_t)luaL_optinteger(L, 2, 1024);
-	size_t offset = (size_t)luaL_optinteger(L, 3, -1);
-	
-	// create a buffer & store on the stack:
-	uv_buf_t * buf = lua_uv_buf_init(L, size);
-	
-	// are we on the main thread?
-	if (Lua(L).mainthread()) {
-		// on main thread; do it immediately:
-		uv_fs_t req;
-		int res = uv_fs_read(loop, &req, file, buf->base, size, offset, NULL);
-		if (res < 0) luaL_error(L, "fs_read (%d)", res);
-		lua_uv_ok(L);
-		lua_pushstring(L, buf->base);
-		return 1;
-	} else {
-		// in a coroutine, do it asynchronously
-		uv_fs_t * req = new uv_fs_t;
-		req->data = L;
-		int res = uv_fs_read(loop, req, file, buf->base, size, offset, lua_uv_fs_read_cb);
-		if (res < 0) luaL_error(L, "fs_read (%d)", res);
-		lua_uv_ok(L);
-		// buf is on the stack to prevent gc:
-		return lua_yield(L, 1);
-	}
-}
-
-int lua_uv_fs_write_result(lua_State * L, uv_fs_t * req) {
-	ssize_t result = req->result;
-	if (req->result < 0) {
-		lua_pushboolean(L, 0);
-		lua_pushstring(L, "fs_write error");
-		lua_pushinteger(L, req->result);
-		return 3;
-	}
-	lua_pushboolean(L, 1);
-	return 1;
-}
-
-void lua_uv_fs_write_cb(uv_fs_t* req) {
-	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_write_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);		
-}
-
-int lua_uv_fs_write(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	uv_file file = lua_uv_check_file(L, 1);
-	const char * buf = luaL_checkstring(L, 2);
-	size_t size = strlen(buf);
-	size_t offset = (size_t)luaL_optinteger(L, 3, -1);
-	
-	// are we in a coroutine?
-	if (lua_pushthread(L)) {
-		// on main thread; do it immediately:
-		uv_fs_t req;
-		int res = uv_fs_write(loop, &req, file, (void *)buf, size, offset, lua_uv_fs_write_cb);
-		lua_uv_ok(L);
-		return lua_uv_fs_write_result(L, &req);
-	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_write(loop, req, file, (void *)buf, size, offset, lua_uv_fs_write_cb);
-		return lua_yield(L, 0);
-	}
-}
-
-int lua_uv_fs_readdir_result(lua_State * lua, uv_fs_t* req) {
-	Lua L((lua_State *)lua);
-	int results = req->result;
-	char * buf = (char *)req->ptr;
-	while (results--) {
-		size_t len = strlen(buf);
-		lua_pushlstring(L, buf, len);
-		buf += len + 1;
-    }
-	return req->result;
-}
-
-void lua_uv_fs_readdir_cb(uv_fs_t* req) {
-	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_readdir_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);
-}
-
-int lua_uv_fs_readdir(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	const char * path = luaL_checkstring(L, 1);
-	int flags = luaL_optinteger(L, 2, 0);
-	
-	// are we in a coroutine?
-	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_fs_t req;
-		uv_fs_readdir(loop, &req, path, flags, NULL);
-		return lua_uv_fs_readdir_result(L, &req);
-	} else {
-		// in a coroutine, do it asynchronously
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_readdir(loop, req, path, flags, lua_uv_fs_readdir_cb);
-		return lua_yield(L, 0);
-	}
-}
-
-int lua_uv_fs_stat_result(lua_State * lua, uv_fs_t* req) {
-	Lua L((lua_State *)lua);
-	struct stat* s;
-	if (req->result < 0) {
-		lua_pushnil(L);
-		lua_pushstring(L, "fs_stat error");
-		lua_pushinteger(L, req->result);
-		return 3;
-	}
-	s = (struct stat *)req->ptr;
-	lua_newtable(L);
-	#if _WIN32
-		L.push((double)s->st_atime); L.setfield(-2, "accessed");
-		L.push((double)s->st_mtime); L.setfield(-2, "modified");
-	#elif !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
-		L.push((double)s->st_atimespec.tv_sec); L.setfield(-2, "accessed");
-		L.push((double)s->st_mtimespec.tv_sec); L.setfield(-2, "modified");
-	#else
-		L.push((double)s->st_atim.tv_sec); L.setfield(-2, "accessed");
-		L.push((double)s->st_mtim.tv_sec); L.setfield(-2, "modified");
-	#endif
-	L.push(s->st_size); L.setfield(-2, "size");
-	return 1;
-}
-
-void lua_uv_fs_stat_cb(uv_fs_t* req) {
-	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_stat_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);	
-}
-
-/*
-	returns table:
-		{ accessed = <seconds>, modified = <seconds>, size = <bytes> }
-	or error code: <integer>
-*/
-int lua_uv_fs_stat(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	const char * path = luaL_checkstring(L, 1);
-	
-	// are we in a coroutine?
-	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_fs_t req;
-		uv_fs_stat(loop, &req, path, NULL);
-		return lua_uv_fs_stat_result(L, &req);
-	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_stat(loop, req, path, lua_uv_fs_stat_cb);
-		return lua_yield(L, 0);
-	}
-}
-
-int lua_uv_fs_event_do(lua_State * L, uv_fs_event_t* handle, const char* filename, int events, int status) {
-	return 0;
-}
-
-void lua_uv_fs_event_cb(uv_fs_event_t* req, const char* filename, int events, int status) {
-	Lua L((lua_State *)req->data);
-	if (status != 0) {
-		luaL_error(L, "fs_event status error: %d (%s)", status, filename);
-	}
-
-	if (filename) {
-		L.push(filename);
-	} else {
-		L.push();
-	}
-
-	switch (events) {
-		case UV_RENAME: L.push("rename"); break;
-		case UV_CHANGE: L.push("change"); break;
-		default: L.push(); break;
-    }
-	
-	L.resume(2);
-}
-
-int lua_uv_fs_event_init(lua_State * L) {
-	uv_loop_t * loop = lua_uv_loop(L);
-	const char * path = luaL_checkstring(L, 1);
-	int flags = luaL_optinteger(L, 2, 0);
-	
-	// are we on the main thread?
-	if (Lua(L).mainthread()) {
-		return luaL_error(L, "must be called within a coroutine");
-	} else {
-		// in a coroutine, do it asynchronously
-		uv_fs_event_t * req = new uv_fs_event_t;
-		req->data = L;
-		int res = uv_fs_event_init(loop, req, path, lua_uv_fs_event_cb, flags);
-		if (res < 0) luaL_error(L, "fs_event_init (%d)", res);
-		return lua_yield(L, 0);
-	}
 }
 
 #pragma mark utils
@@ -723,16 +221,6 @@ int lua_uv_cpu_info(lua_State* L) {
 	uv_free_cpu_info(cpu_infos, count);
 	return count;
 }
-
-
-//struct uv_interface_address_s {
-//  char* name;
-//  int is_internal;
-//  union {
-//    struct sockaddr_in address4;
-//    struct sockaddr_in6 address6;
-//  } address;
-//};
 
 int lua_uv_interface_addresses(lua_State * L) {
 	int count;
@@ -825,6 +313,8 @@ int lua_uv_loop_new(lua_State * L) {
 	LUA_UV_CLOSURE(uv, last_error);
 	
 	LUA_UV_CLOSURE(uv, timer);
+	LUA_UV_CLOSURE(uv, tcp);
+	LUA_UV_CLOSURE(uv, tty);
 	
 	LUA_UV_CLOSURE(uv, fs_open);
 	LUA_UV_CLOSURE(uv, fs_readdir);
@@ -839,35 +329,77 @@ int lua_uv_loop_new(lua_State * L) {
 	return 1;
 }
 
+uv_loop_t * lua_uv_main_loop(lua_State * L) {
+	lua_getfield(L, LUA_REGISTRYINDEX, "uv_main_loop");
+	uv_loop_t * loop = (*(uv_loop_t **)luaL_checkudata(L, -1, classname<uv_loop_t>()));
+	return loop;
+}
+
+int lua_uv_request___gc(lua_State * L) {
+	printf("request __gc\n");
+	return 0;
+}	
+
+int lua_test_gc(lua_State * L) {
+	printf("test gc\n");
+	return 0;
+}
+
+int lua_test_cb(lua_State * L) {
+	// nothing spesh
+	return 0;
+}
+
 // The uv module returns a uv_loop userdatum, which has all the main
 // libuv functions within it.
 // This ensures that multiple independent lua_States have distinct loops,
 // that the loop is properly closed when the module is garbage collected,
 // and that the uv_loop_t is available as an upvalue to all functions.
 extern "C" int luaopen_uv(lua_State * L) {
+	
+	// a quick test:
+	luaL_newmetatable(L, "TEST");
+	lua_pushcfunction(L, lua_test_gc); lua_setfield(L, -2, "__gc");
+	lua_pop(L, 1);
+	
+	lua_pushlightuserdata(L, L);
+	lua_newuserdata(L, 8);
+	luaL_getmetatable(L, "TEST");
+	lua_setmetatable(L, -2);
+	lua_pushcclosure(L, lua_test_cb, 1);
+	lua_settable(L, LUA_REGISTRYINDEX);
+	
+	
+	
+	
+	
 	lua_uv_loop_new(L);
 	int loopidx = lua_gettop(L);
 	
-	// define uv_timer metatable
-	luaL_newmetatable(L, classname<uv_timer_t>());
+	// stick this one in the registry:
+	lua_pushvalue(L, loopidx);
+	lua_setfield(L, LUA_REGISTRYINDEX, "uv_main_loop");
+	
+	// define uv_buf metatable
+	luaL_newmetatable(L, classname<uv_buf_t>());
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index");
-	LUA_UV_CLOSURE(uv_timer, __tostring);
-	LUA_UV_CLOSURE(uv_timer, __gc);
-	LUA_UV_CLOSURE(uv_timer, start);
-	LUA_UV_CLOSURE(uv_timer, stop);
-	LUA_UV_CLOSURE(uv_timer, close);
+	lua_pushcfunction(L, lua_generic___tostring<uv_buf_t>);
+	lua_setfield(L, -2, "__tostring");
+	LUA_UV_CLOSURE(uv_buf, __gc);
 	lua_pop(L, 1);
 	
-	// define uv_file metatable
-	luaL_newmetatable(L, classname<uv_file>());
-	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index");
-	LUA_UV_CLOSURE(uv_fs, __tostring);
-	LUA_UV_CLOSURE(uv_fs, __gc);
-	LUA_UV_CLOSURE(uv_fs, close);
-	LUA_UV_CLOSURE(uv_fs, read);
-	LUA_UV_CLOSURE(uv_fs, write);
+	// order is important:
+	init_handle_metatable(L, loopidx);
+	init_stream_metatable(L, loopidx);
+	init_timer_metatable(L, loopidx);
+	init_tcp_metatable(L, loopidx);
+	init_tty_metatable(L, loopidx);
+	init_fs_metatable(L, loopidx);
+	
+	luaL_newmetatable(L, "uv.request");
+	lua_pushcfunction(L, lua_uv_request___gc);
+	lua_setfield(L, -2, "__gc");
 	lua_pop(L, 1);
 	
 	return 1;
