@@ -1,15 +1,6 @@
 local uv = require "uv"
 local format = string.format
 
-uv.test(function()
-	print("inside lua again")
-	local x = uv.read()
-	while x do
-		print("read", x)
-		x = uv.read()
-	end
-end)
---[[
 
 local simpleresponse = [=[
 HTTP/1.0 200 OK
@@ -211,7 +202,5 @@ end
 coroutine.wrap(server)()
 
 uv.run()
-
---]]
 
 print("done")

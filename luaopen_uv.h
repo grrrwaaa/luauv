@@ -117,8 +117,8 @@ uv_buf_t * lua_uv_buf_init(lua_State * L, char * data, size_t len);
 // expects the coroutine itself to be at the top of the stack:
 template<typename T>
 inline T * callback_resume_before(lua_State * L, int settop) {
-	// map coro to prevent gc:
-	lua_pushvalue(L, 1);
+	// map coro to a pointer, to prevent gc:
+	lua_pushlightuserdata(L, L);
 	lua_rawset(L, LUA_REGISTRYINDEX);
 
 	// choose how much to keep on the stack to prevent gc:

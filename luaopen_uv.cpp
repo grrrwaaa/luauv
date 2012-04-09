@@ -261,56 +261,6 @@ int lua_uv_get_process_title(lua_State * L) {
 }
 
 
-int count = 0;
-int lua_uv_read(lua_State * L) {
-	Lua(L).dump("in read");
-	if (count < 10) {
-		lua_pushnumber(L, count++);
-	} else {
-		lua_pushnil(L);
-	}
-
-	return lua_yield(L, 1);
-}
-
-int lua_uv_test(lua_State * L) {
-	luaL_checktype(L, 1, LUA_TFUNCTION);
-
-	// imagine we are now in uv.run()
-	
-	// and trigger a callback:
-	
-	Lua C(lua_newthread(L));
-	//lua_pushcfunction(C, lua_uv_demo);
-	
-	lua_pushvalue(L, 1);
-	lua_xmove(L, C, 1);
-	C.resume(0);
-	while (lua_status(C) == LUA_YIELD) {
-		C.resume(lua_gettop(C));
-	}
-	
-	printf("test done\n");
-	
-	return 0;
-}
-
-int test1_iter(lua_State * L) {
-	if (count++ < 10) {
-		lua_pushnumber(L, count);
-	} else {
-		lua_pushnil(L);
-	}
-	printf("yield from test1 iter\n");
-	return lua_yield(L, 1);
-}
-
-int lua_uv_test1(lua_State * L) {
-	lua_pushcclosure(L, test1_iter, 0);
-	printf(" test1\n");
-	return 1;
-}
-
 int lua_uv_loop_new(lua_State * L) {
 	struct luaL_reg loop_methods[] = {
 		// utilities
@@ -370,10 +320,6 @@ int lua_uv_loop_new(lua_State * L) {
 	LUA_UV_CLOSURE(uv, fs_open);
 	LUA_UV_CLOSURE(uv, fs_readdir);
 	LUA_UV_CLOSURE(uv, fs_stat);
-	
-	LUA_UV_CLOSURE(uv, test);
-	LUA_UV_CLOSURE(uv, test1);
-	LUA_UV_CLOSURE(uv, read);
 	
 	// install the non-closure methods:
 	luaL_register(L, NULL, loop_methods);
