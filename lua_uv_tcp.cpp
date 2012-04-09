@@ -133,10 +133,12 @@ int lua_uv_tcp_getpeername(lua_State * L) {
 	return 1;
 }
 
-void lua_uv_tcp_connect_cb(uv_connect_t * req, int status) {
-	printf("lua_uv_tcp_connect_cb\n");
+void lua_uv_tcp_connect_resume(uv_connect_t * req, int status) {
+	dprintf("lua_uv_tcp_connect_resume\n");
 	lua_State * L = (lua_State *)req->data;
-	release_request(L, req);
+	
+	callback_resume_after(L);
+	
 	lua_pushinteger(L, status);
 	Lua(L).resume(1);
 }
@@ -148,17 +150,16 @@ int lua_uv_tcp_connect(lua_State * L) {
 		
 	// are we in a coroutine?
 	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_connect_t req;
-		uv_tcp_connect(&req, t, addr, NULL);
-		lua_uv_ok(L);
-		return 0;
+		luaL_error(L, "must be called from a coroutine");
+//		// not a coroutine; make a blocking call:
+//		uv_connect_t req;
+//		uv_tcp_connect(&req, t, addr, NULL);
+//		lua_uv_ok(L);
+//		return 0;
 	} else {
-		// generate a request:
-		uv_connect_t * req = make_request<uv_connect_t>(L);
-		uv_tcp_connect(req, t, addr, lua_uv_tcp_connect_cb);
-		// keeps the uv_buf on the stack until the write is completed:
-		return lua_yield(L, 1);	
+		uv_connect_t * req = callback_resume_before<uv_connect_t>(L, 1);
+		uv_tcp_connect(req, t, addr, lua_uv_tcp_connect_resume);
+		return lua_yield(L, 2);	
 	}
 	return 1;	
 }
@@ -170,23 +171,22 @@ int lua_uv_tcp_connect6(lua_State * L) {
 		
 	// are we in a coroutine?
 	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_connect_t req;
-		uv_tcp_connect6(&req, t, addr, NULL);
-		lua_uv_ok(L);
-		return 0;
+		luaL_error(L, "must be called from a coroutine");
+//		// not a coroutine; make a blocking call:
+//		uv_connect_t req;
+//		uv_tcp_connect6(&req, t, addr, NULL);
+//		lua_uv_ok(L);
+//		return 0;
 	} else {
-		// generate a request:
-		uv_connect_t * req = make_request<uv_connect_t>(L);
-		uv_tcp_connect6(req, t, addr, lua_uv_tcp_connect_cb);
-		// keeps the uv_buf on the stack until the write is completed:
-		return lua_yield(L, 1);	
+		uv_connect_t * req = callback_resume_before<uv_connect_t>(L, 1);
+		uv_tcp_connect6(req, t, addr, lua_uv_tcp_connect_resume);
+		return lua_yield(L, 2);	
 	}
 	return 1;	
 }
 
 int lua_uv_tcp___gc(lua_State * L) {
-	printf("lua_uv_tcp___gc\n");
+	dprintf("lua_uv_tcp___gc\n");
 	lua_uv_handle_close(L);
 	return 0;
 }

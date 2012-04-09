@@ -20,7 +20,7 @@ int lua_uv_loop___tostring(lua_State * L) {
 }
 
 int lua_uv_loop___gc(lua_State * L) {
-	printf("lua_uv_loop___gc\n");
+	dprintf("lua_uv_loop___gc\n");
 	lua_pushnil(L);
 	lua_setmetatable(L, 1);
 	uv_loop_delete(lua_uv_loop(L));
@@ -63,7 +63,7 @@ uv_buf_t * lua_uv_buf_init(lua_State * L, char * data, size_t len) {
 }
 
 int lua_uv_buf___gc(lua_State * L) {
-	printf("buf gc\n");
+	dprintf("buf gc\n");
 	return 0;
 }
 
@@ -260,6 +260,57 @@ int lua_uv_get_process_title(lua_State * L) {
 	return 1;
 }
 
+
+int count = 0;
+int lua_uv_read(lua_State * L) {
+	Lua(L).dump("in read");
+	if (count < 10) {
+		lua_pushnumber(L, count++);
+	} else {
+		lua_pushnil(L);
+	}
+
+	return lua_yield(L, 1);
+}
+
+int lua_uv_test(lua_State * L) {
+	luaL_checktype(L, 1, LUA_TFUNCTION);
+
+	// imagine we are now in uv.run()
+	
+	// and trigger a callback:
+	
+	Lua C(lua_newthread(L));
+	//lua_pushcfunction(C, lua_uv_demo);
+	
+	lua_pushvalue(L, 1);
+	lua_xmove(L, C, 1);
+	C.resume(0);
+	while (lua_status(C) == LUA_YIELD) {
+		C.resume(lua_gettop(C));
+	}
+	
+	printf("test done\n");
+	
+	return 0;
+}
+
+int test1_iter(lua_State * L) {
+	if (count++ < 10) {
+		lua_pushnumber(L, count);
+	} else {
+		lua_pushnil(L);
+	}
+	printf("yield from test1 iter\n");
+	return lua_yield(L, 1);
+}
+
+int lua_uv_test1(lua_State * L) {
+	lua_pushcclosure(L, test1_iter, 0);
+	printf(" test1\n");
+	return 1;
+}
+
 int lua_uv_loop_new(lua_State * L) {
 	struct luaL_reg loop_methods[] = {
 		// utilities
@@ -320,6 +371,10 @@ int lua_uv_loop_new(lua_State * L) {
 	LUA_UV_CLOSURE(uv, fs_readdir);
 	LUA_UV_CLOSURE(uv, fs_stat);
 	
+	LUA_UV_CLOSURE(uv, test);
+	LUA_UV_CLOSURE(uv, test1);
+	LUA_UV_CLOSURE(uv, read);
+	
 	// install the non-closure methods:
 	luaL_register(L, NULL, loop_methods);
 	
@@ -336,18 +391,13 @@ uv_loop_t * lua_uv_main_loop(lua_State * L) {
 }
 
 int lua_uv_request___gc(lua_State * L) {
-	printf("request __gc\n");
+	dprintf("request __gc\n");
 	return 0;
 }	
 
-int lua_test_gc(lua_State * L) {
-	printf("test gc\n");
-	return 0;
-}
-
-int lua_test_cb(lua_State * L) {
-	// nothing spesh
-	return 0;
+int lua_uv_request___tostring(lua_State * L) {
+	lua_pushfstring(L, "uv.request (%p)", lua_touserdata(L, 1));
+	return 1;
 }
 
 // The uv module returns a uv_loop userdatum, which has all the main
@@ -356,22 +406,6 @@ int lua_test_cb(lua_State * L) {
 // that the loop is properly closed when the module is garbage collected,
 // and that the uv_loop_t is available as an upvalue to all functions.
 extern "C" int luaopen_uv(lua_State * L) {
-	
-	// a quick test:
-	luaL_newmetatable(L, "TEST");
-	lua_pushcfunction(L, lua_test_gc); lua_setfield(L, -2, "__gc");
-	lua_pop(L, 1);
-	
-	lua_pushlightuserdata(L, L);
-	lua_newuserdata(L, 8);
-	luaL_getmetatable(L, "TEST");
-	lua_setmetatable(L, -2);
-	lua_pushcclosure(L, lua_test_cb, 1);
-	lua_settable(L, LUA_REGISTRYINDEX);
-	
-	
-	
-	
 	
 	lua_uv_loop_new(L);
 	int loopidx = lua_gettop(L);
@@ -398,6 +432,8 @@ extern "C" int luaopen_uv(lua_State * L) {
 	init_fs_metatable(L, loopidx);
 	
 	luaL_newmetatable(L, "uv.request");
+	lua_pushcfunction(L, lua_uv_request___tostring);
+	lua_setfield(L, -2, "__tostring");
 	lua_pushcfunction(L, lua_uv_request___gc);
 	lua_setfield(L, -2, "__gc");
 	lua_pop(L, 1);

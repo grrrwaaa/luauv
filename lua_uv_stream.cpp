@@ -2,38 +2,39 @@
 #include "luaopen_uv.h"
 
 int lua_uv_stream_read_cb_closure(lua_State * L) {
-	printf("lua_uv_stream_read_cb_closure\n");
+	dprintf("lua_uv_stream_read_cb_closure\n");
 	lua_pushvalue(L, lua_upvalueindex(1)); // handler
 	lua_insert(L, 1);
 	lua_pushvalue(L, lua_upvalueindex(2)); // udata
 	lua_insert(L, 2);
 	lua_call(L, 3, 0);	// pcall?
+	//Lua(L).resume(3);
 	return 0;
 }
 
 void lua_uv_stream_read_cb(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
-	//printf("lua_uv_stream_read_cb\n");
+	dprintf("lua_uv_stream_read_cb\n");
 	uv_loop_t * loop = handle->loop;
 	lua_State * L = (lua_State *)loop->data;
-	lua_pushlightuserdata(L, handle);
-	lua_rawget(L, LUA_REGISTRYINDEX);
-	//printf("handle %p loop %p L %p %d %d\n", handle, loop, L, lua_gettop(L), nread);
-	Lua(L).dump("top");
 	
+	Lua C(lua_newthread(L));
 	
-	
+	// get the closure:
+	lua_pushlightuserdata(C, handle);
+	lua_rawget(C, LUA_REGISTRYINDEX);
 	
 	// push the buffer:
 	if (nread > 0) {
-		lua_pushlstring(L, buf.base, nread);
-		lua_pushinteger(L, nread);
+		lua_pushlstring(C, buf.base, nread);
+		lua_pushinteger(C, nread);
 	} else {
 		// if nread == -1, signals EOF.
-		lua_pushnil(L);
-		lua_pushinteger(L, nread);
+		lua_pushnil(C);
+		lua_pushinteger(C, nread);
 	}
 	
-	lua_call(L, 2, 0);	// pcall?
+	//lua_call(C, 2, 0);	// pcall?
+	C.resume(2);
 }
 
 // read cb may fire multiple times.
@@ -62,55 +63,55 @@ int lua_uv_stream_read_stop(lua_State * L) {
 	return 1;	
 }
 
-void lua_uv_stream_write_cb(uv_write_t * req, int status) {
-	printf("lua_uv_stream_write_cb\n");
+void lua_uv_stream_write_resume(uv_write_t * req, int status) {
+	dprintf("lua_uv_stream_write_resume\n");
 	lua_State * L = (lua_State *)req->data;
-	release_request(L, req);
+	
+	callback_resume_after(L);	
+	
 	lua_pushinteger(L, status);
-	Lua(L).resume(1);
+	Lua(L).resume(1);	
 }
 int lua_uv_stream_write(lua_State * L) {
 	uv_stream_t * s = lua_generic_object<uv_stream_t>(L, 1);
 	size_t sz;
 	const char * str = luaL_checklstring(L, 2, &sz);
-	// are we in a coroutine?
+	
 	if (lua_pushthread(L)) {
-		// not a coroutine; make a blocking call:
-		uv_write_t req;
-		uv_buf_t buf;
-		buf.base = (char *)str;
-		buf.len = sz;
-		uv_write(&req, s, &buf, 1, NULL);
-		lua_uv_ok(L);
-		return 0;
+		// not in a coroutine.
+		// uv_write does not provide a blocking version
+		luaL_error(L, "stream writing only permitted within a coroutine");
+		return 0;	
 	} else {
-		// generate a request:
-		uv_write_t * req = make_request<uv_write_t>(L);
+		uv_write_t * req = callback_resume_before<uv_write_t>(L, 1);
 		uv_buf_t * buf = lua_uv_buf_init(L, (char *)str, sz);
-		uv_write(req, s, buf, 1, lua_uv_stream_write_cb);
-		// keeps the uv_buf on the stack until the write is completed:
-		
-		return lua_yield(L, 1);	
+		uv_write(req, s, buf, 1, lua_uv_stream_write_resume);
+		// keep these on the stack to prevent gc:
+		return lua_yield(L, 3);	
 	}
-	return 1;	
 }
 
 int lua_uv_stream_listen_cb_closure(lua_State * L) {
-	printf("lua_uv_stream_listen_cb_closure\n");
+	dprintf("lua_uv_stream_listen_cb_closure %p\n", L);
 	lua_pushvalue(L, lua_upvalueindex(1)); // handler
 	lua_pushvalue(L, lua_upvalueindex(2)); // udata
 	lua_call(L, 1, 0);	// pcall?
+	//return Lua(L).resume(1);
 	return 0;
-
 }
 
 void lua_uv_stream_listen_cb(uv_stream_t* handle, int status) {
-	printf("lua_uv_stream_listen_cb\n");
+	dprintf("lua_uv_stream_listen_cb\n");
 	uv_loop_t * loop = handle->loop;
 	lua_State * L = (lua_State *)loop->data;
-	lua_pushlightuserdata(L, handle);
-	lua_rawget(L, LUA_REGISTRYINDEX);	//lua_uv_stream_listen_cb_closure
-	lua_call(L, 0, 0);	// pcall?
+	
+	Lua C(lua_newthread(L));
+	printf("created coro %p\n", (lua_State *)C);
+	
+	lua_pushlightuserdata(C, handle);
+	lua_rawget(C, LUA_REGISTRYINDEX);	//lua_uv_stream_listen_cb_closure
+	//lua_call(L, 0, 0);	// pcall?
+	printf("resume %d\n", C.resume(0));
 }
 
 // listen for connections:
@@ -139,38 +140,35 @@ int lua_uv_stream_accept(lua_State * L) {
 	return 0;
 }
 
-void lua_uv_stream_shutdown_cb(uv_shutdown_t * req, int status) {
-	printf("lua_uv_stream_shutdown_cb\n");
+void lua_uv_stream_shutdown_resume(uv_shutdown_t * req, int status) {
+	dprintf("lua_uv_stream_shutdown_resume\n");
 	lua_State * L = (lua_State *)req->data;
-	release_request(L, req);
+	
+	callback_resume_after(L);
+	
 	lua_pushinteger(L, status);
-	Lua(L).resume(1);
+	Lua(L).resume(1);	
 }
 
 int lua_uv_stream_shutdown(lua_State * L) {
 	uv_stream_t * s = lua_generic_object<uv_stream_t>(L, 1);
-	
-	// unset metatable on stream:
-	lua_pushnil(L);
-	lua_setmetatable(L, 1);
-	
 	// are we in a coroutine?
 	if (lua_pushthread(L)) {
+		luaL_error(L, "must be called from a coroutine");
 		// not a coroutine; make a blocking call:
 		uv_shutdown_t req;
 		uv_shutdown(&req, s, NULL);
 		lua_uv_ok(L);
 		return 0;
 	} else {
-		// generate a request:
-		uv_shutdown_t * req = make_request<uv_shutdown_t>(L);
-		uv_shutdown(req, s, lua_uv_stream_shutdown_cb);
-		return lua_yield(L, 0);
+		uv_shutdown_t * req = callback_resume_before<uv_shutdown_t>(L, 1);
+		uv_shutdown(req, s, lua_uv_stream_shutdown_resume);
+		return lua_yield(L, 2);	
 	}
 }
 
 int lua_uv_stream___gc(lua_State * L) {
-	printf("lua_uv_stream___gc\n");
+	dprintf("lua_uv_stream___gc\n");
 	lua_uv_handle_close(L);
 	return 0;
 }

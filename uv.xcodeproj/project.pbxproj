@@ -354,6 +354,8 @@
 		362093B0153139F000449702 /* test-udp-options.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "test-udp-options.c"; sourceTree = "<group>"; };
 		362093B1153139F000449702 /* test-udp-send-and-recv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "test-udp-send-and-recv.c"; sourceTree = "<group>"; };
 		362093B2153139F000449702 /* test-util.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "test-util.c"; sourceTree = "<group>"; };
+		3620968C15323F1E00449702 /* test.http.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.lua; path = test.http.lua; sourceTree = "<group>"; };
+		362098981532557600449702 /* notes.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = notes.txt; sourceTree = "<group>"; };
 		3680E561152677E00087484A /* uv.so */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = uv.so; sourceTree = BUILT_PRODUCTS_DIR; };
 		3680E592152679810087484A /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libuv.a; sourceTree = "<group>"; };
 		3680E594152679990087484A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
@@ -389,6 +391,7 @@
 		08FB7794FE84155DC02AAC07 /* uv */ = {
 			isa = PBXGroup;
 			children = (
+				362098981532557600449702 /* notes.txt */,
 				3620926D153139EF00449702 /* libuv */,
 				36ED4F7F1523781200951211 /* README.md */,
 				36ED4F5B152376D600951211 /* lakefile */,
@@ -407,6 +410,7 @@
 				36ED4F771523776A00951211 /* test.uv.lua */,
 				36175D13152FC72F0097D43E /* test.tty.lua */,
 				362091731531282A00449702 /* test.tcp.lua */,
+				3620968C15323F1E00449702 /* test.http.lua */,
 				3680E561152677E00087484A /* uv.so */,
 			);
 			name = uv;
@@ -1012,6 +1016,7 @@
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				OTHER_CFLAGS = "-DNDEBUG";
 				PREBINDING = NO;
 				SDKROOT = macosx10.6;
 				VALID_ARCHS = "i386 x86_64";

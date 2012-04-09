@@ -7,7 +7,7 @@ int lua_uv_handle_is_active(lua_State * L) {
 }
 
 void lua_uv_close_handle_cb(uv_handle_t* handle) {
-	//printf("closing handle %p", handle);
+	//dprintf("closing handle %p", handle);
 	// where does L come from?
 	uv_loop_t * loop = handle->loop;
 	lua_State * L = (lua_State *)loop->data;
@@ -22,7 +22,7 @@ int lua_uv_handle_close(lua_State * L) {
 //	if (uv_is_active(handle)) {
 //		luaL_error(L, "cannot close active handle %p", handle);
 //	}	
-	printf("closing handle (active %d)\n", uv_is_active(handle));
+	dprintf("closing handle (active %d)\n", uv_is_active(handle));
 	// remove metatable:
 	lua_pushnil(L);
 	lua_setmetatable(L, 1);
@@ -36,7 +36,7 @@ int lua_uv_handle_close(lua_State * L) {
 }
 
 int lua_uv_handle___gc(lua_State * L) {
-	printf("__gc handle\n");
+	dprintf("__gc handle\n");
 	lua_uv_handle_close(L);
 	return 0;
 }

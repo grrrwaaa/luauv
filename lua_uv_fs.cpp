@@ -21,12 +21,11 @@ int lua_uv_fs___tostring(lua_State * L) {
 	return 1;
 }
 
-void lua_uv_fs_close_cb(uv_fs_t* req) {
+void lua_uv_fs_close_resume(uv_fs_t* req) {
 	lua_State * L = (lua_State *)req->data;
-	int results = 0;
 	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);
+	callback_resume_after(L);
+	Lua(L).resume(0);
 }
 
 int lua_uv_fs_close(lua_State * L) {
@@ -45,10 +44,9 @@ int lua_uv_fs_close(lua_State * L) {
 		lua_uv_ok(L);
 		return 0;
 	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_close(loop, req, file, lua_uv_fs_close_cb);
-		return lua_yield(L, 0);
+		uv_fs_t * req = callback_resume_before<uv_fs_t>(L, 1);
+		uv_fs_close(loop, req, file, lua_uv_fs_close_resume);
+		return lua_yield(L, 2);
 	}
 }
 
@@ -62,21 +60,22 @@ int lua_uv_fs_open_result(lua_State * L, uv_fs_t* req) {
 		lua_pushnil(L);
 		lua_pushstring(L, "fs_open error");
 		lua_pushinteger(L, req->result);
+		uv_fs_req_cleanup(req);	
 		return 3;
 	}
 	// create new userdata containing file:
 	*(uv_file *)lua_newuserdata(L, sizeof(uv_file *)) = (uv_file)result;
 	luaL_getmetatable(L, classname<uv_file>());
 	lua_setmetatable(L, -2);
+	uv_fs_req_cleanup(req);
 	return 1;
 }
 
-void lua_uv_fs_open_cb(uv_fs_t* req) {
+void lua_uv_fs_open_resume(uv_fs_t* req) {
 	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_open_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);
+	callback_resume_after(L);
+	
+	Lua(L).resume(lua_uv_fs_open_result(L, req));
 }
 
 int lua_uv_fs_open(lua_State * L) {
@@ -92,22 +91,22 @@ int lua_uv_fs_open(lua_State * L) {
 		uv_fs_open(loop, &req, path, flags, mode, NULL);
 		return lua_uv_fs_open_result(L, &req);
 	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_open(loop, req, path, flags, mode, lua_uv_fs_open_cb);
-		return lua_yield(L, 0);
+		uv_fs_t * req = callback_resume_before<uv_fs_t>(L, 0);
+		uv_fs_open(loop, req, path, flags, mode, lua_uv_fs_open_resume);
+		return lua_yield(L, 1);
 	}
 }
 
-void lua_uv_fs_read_cb(uv_fs_t* req) {
-	Lua L((lua_State *)req->data);
-	uv_buf_t * buf = (uv_buf_t *)lua_touserdata(L, 1);
+void lua_uv_fs_read_resume(uv_fs_t* req) {
+	lua_State * L = (lua_State *)req->data;
+	uv_buf_t * buf = (uv_buf_t *)lua_touserdata(L, 2);
+	
+	callback_resume_after(L);
+	
 	lua_pushstring(L, buf->base);
-	
 	uv_fs_req_cleanup(req);
-	delete req;
 	
-	L.resume(1);
+	Lua(L).resume(1);
 }
 
 int lua_uv_fs_read(lua_State * L) {
@@ -128,13 +127,9 @@ int lua_uv_fs_read(lua_State * L) {
 		lua_pushstring(L, buf->base);
 		return 1;
 	} else {
-		// in a coroutine, do it asynchronously
-		uv_fs_t * req = new uv_fs_t;
-		req->data = L;
-		uv_fs_read(loop, req, file, buf->base, size, offset, lua_uv_fs_read_cb);
-		lua_uv_ok(L);
-		// buf is on the stack to prevent gc:
-		return lua_yield(L, 1);
+		uv_fs_t * req = callback_resume_before<uv_fs_t>(L, 1);
+		uv_fs_read(loop, req, file, buf->base, size, offset, lua_uv_fs_read_resume);
+		return lua_yield(L, 2);
 	}
 }
 
@@ -144,19 +139,21 @@ int lua_uv_fs_write_result(lua_State * L, uv_fs_t * req) {
 		lua_pushboolean(L, 0);
 		lua_pushstring(L, "fs_write error");
 		lua_pushinteger(L, req->result);
+		uv_fs_req_cleanup(req);
 		return 3;
 	}
 	lua_pushboolean(L, 1);
 	lua_pushinteger(L, result);
+	uv_fs_req_cleanup(req);
 	return 2;
 }
 
-void lua_uv_fs_write_cb(uv_fs_t* req) {
+void lua_uv_fs_write_resume(uv_fs_t* req) {
 	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_write_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);		
+	
+	callback_resume_after(L);
+	
+	Lua(L).resume(lua_uv_fs_write_result(L, req));
 }
 
 int lua_uv_fs_write(lua_State * L) {
@@ -170,14 +167,13 @@ int lua_uv_fs_write(lua_State * L) {
 	if (lua_pushthread(L)) {
 		// on main thread; do it immediately:
 		uv_fs_t req;
-		uv_fs_write(loop, &req, file, (void *)buf, size, offset, lua_uv_fs_write_cb);
+		uv_fs_write(loop, &req, file, (void *)buf, size, offset, NULL);
 		lua_uv_ok(L);
 		return lua_uv_fs_write_result(L, &req);
 	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_write(loop, req, file, (void *)buf, size, offset, lua_uv_fs_write_cb);
-		return lua_yield(L, 0);
+		uv_fs_t * req = callback_resume_before<uv_fs_t>(L, 1);
+		uv_fs_write(loop, req, file, (void *)buf, size, offset, lua_uv_fs_write_resume);
+		return lua_yield(L, 2);
 	}
 }
 
@@ -190,15 +186,16 @@ int lua_uv_fs_readdir_result(lua_State * lua, uv_fs_t* req) {
 		lua_pushlstring(L, buf, len);
 		buf += len + 1;
     }
-	return req->result;
+	uv_fs_req_cleanup(req);
+	return results;
 }
 
-void lua_uv_fs_readdir_cb(uv_fs_t* req) {
+void lua_uv_fs_readdir_resume(uv_fs_t* req) {
 	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_readdir_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);
+	
+	callback_resume_after(L);
+	
+	Lua(L).resume(lua_uv_fs_readdir_result(L, req));
 }
 
 int lua_uv_fs_readdir(lua_State * L) {
@@ -213,10 +210,9 @@ int lua_uv_fs_readdir(lua_State * L) {
 		uv_fs_readdir(loop, &req, path, flags, NULL);
 		return lua_uv_fs_readdir_result(L, &req);
 	} else {
-		// in a coroutine, do it asynchronously
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_readdir(loop, req, path, flags, lua_uv_fs_readdir_cb);
-		return lua_yield(L, 0);
+		uv_fs_t * req = callback_resume_before<uv_fs_t>(L, 1);
+		uv_fs_readdir(loop, req, path, flags, lua_uv_fs_readdir_resume);
+		return lua_yield(L, 2);
 	}
 }
 
@@ -227,6 +223,7 @@ int lua_uv_fs_stat_result(lua_State * lua, uv_fs_t* req) {
 		lua_pushnil(L);
 		lua_pushstring(L, "fs_stat error");
 		lua_pushinteger(L, req->result);
+		uv_fs_req_cleanup(req);
 		return 3;
 	}
 	s = (struct stat *)req->ptr;
@@ -242,15 +239,16 @@ int lua_uv_fs_stat_result(lua_State * lua, uv_fs_t* req) {
 		L.push((double)s->st_mtim.tv_sec); L.setfield(-2, "modified");
 	#endif
 	L.push(s->st_size); L.setfield(-2, "size");
+	uv_fs_req_cleanup(req);
 	return 1;
 }
 
-void lua_uv_fs_stat_cb(uv_fs_t* req) {
+void lua_uv_fs_stat_resume(uv_fs_t* req) {
 	lua_State * L = (lua_State *)req->data;
-	int results = lua_uv_fs_stat_result(L, req);
-	uv_fs_req_cleanup(req);
-	release_request(L, req);
-	Lua(L).resume(results);	
+	
+	callback_resume_after(L);
+
+	Lua(L).resume(lua_uv_fs_stat_result(L, req));	
 }
 
 /*
@@ -269,10 +267,9 @@ int lua_uv_fs_stat(lua_State * L) {
 		uv_fs_stat(loop, &req, path, NULL);
 		return lua_uv_fs_stat_result(L, &req);
 	} else {
-		// generate a request:
-		uv_fs_t * req = make_request<uv_fs_t>(L);
-		uv_fs_stat(loop, req, path, lua_uv_fs_stat_cb);
-		return lua_yield(L, 0);
+		uv_fs_t * req = callback_resume_before<uv_fs_t>(L, 1);
+		uv_fs_stat(loop, req, path, lua_uv_fs_stat_resume);
+		return lua_yield(L, 2);
 	}
 }
 

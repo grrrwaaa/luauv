@@ -1,12 +1,4 @@
 local uv = require "uv"
-print("hello")
-
-collectgarbage()
-collectgarbage()
-collectgarbage()
-collectgarbage()
-collectgarbage()
-collectgarbage()
 
 local host = "127.0.0.1"
 local port = 12345

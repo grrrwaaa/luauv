@@ -20,6 +20,12 @@ extern "C" {
 // lightweight C++ wrapper of Lua API:
 #include "al_Lua.hpp"
 
+#ifndef NDEBUG
+	#define dprintf(args ...) fprintf(stderr, args)
+#else
+	#define dprintf(args ...) 
+#endif
+
 void init_handle_metatable(lua_State * L, int loopidx);
 void init_fs_metatable(lua_State * L, int loopidx);
 void init_stream_metatable(lua_State * L, int loopidx);
@@ -104,41 +110,37 @@ uv_buf_t * lua_uv_buf_init(lua_State * L, size_t len);
 // allocates as a userdata & copies in data
 uv_buf_t * lua_uv_buf_init(lua_State * L, char * data, size_t len);
 
-#pragma mark requests
+/*
+	Utilities for handling one-shot asynchronous callbacks via coroutines:
+*/
 
-//	A reusable template for one-shot requests.
-//	Creating a request will allocate memory from Lua
-//	The coroutine and userdata are stashed as upvalues of a function in the registry against the request pointer, to prevent garbage collection of any of them while the request is pending.
-//	Releasing the request removes the registry link, allowing the closure & upvalues to be collected.
-
-// a dummy function used just to prevent gc of its upvalues
-inline int lua_uv_request_closure(lua_State * L) { return 0; }
-
-// expects the coroutine to already be on the top of the stack:
+// expects the coroutine itself to be at the top of the stack:
 template<typename T>
-inline T * make_request(lua_State * L) {
-	//lua_pushthread(L);	// already there
+inline T * callback_resume_before(lua_State * L, int settop) {
+	// map coro to prevent gc:
+	lua_pushvalue(L, 1);
+	lua_rawset(L, LUA_REGISTRYINDEX);
+
+	// choose how much to keep on the stack to prevent gc:
+	lua_settop(L, settop);
+	
+	// allocate the request as a userdatum on the stack:
 	T * req = (T *)lua_newuserdata(L, sizeof(T));
 	luaL_getmetatable(L, "uv.request");
 	lua_setmetatable(L, -2); // just for debugging really
-	
-	// cache to prevent gc
-	// making a closure as a way to store two values against the ptr
-	lua_pushcclosure(L, lua_uv_request_closure, 2);
-	lua_pushlightuserdata(L, req);
-	lua_insert(L, -2);
-	// registry[req] = closure(coro, udata):
-	lua_rawset(L, LUA_REGISTRYINDEX);	
 	// request needs to know the lua_State ptr:
 	req->data = L;	
 	return req;
 }
 
-template<typename T>
-inline void release_request(lua_State * L, T * req) {
-	lua_pushlightuserdata(L, req);
+inline void callback_resume_after(lua_State * L) {
+	// let stack be collected.
+	lua_settop(L, 0);
+	
+	// un-map coro:
+	lua_pushthread(L);
 	lua_pushnil(L);
-	lua_rawset(L, LUA_REGISTRYINDEX);	// registry[req] = nil
+	lua_rawset(L, LUA_REGISTRYINDEX);
 }
 
 #endif

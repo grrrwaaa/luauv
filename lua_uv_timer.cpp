@@ -1,12 +1,5 @@
 #include "luaopen_uv.h"
 
-int lua_uv_timer_cb_closure(lua_State * L) {
-	lua_pushvalue(L, lua_upvalueindex(1)); // handler
-	lua_pushvalue(L, lua_upvalueindex(2)); // udata
-	lua_call(L, 1, 0);	// pcall?
-	return 0;
-}
-
 int lua_uv_timer(lua_State * L) {
 	uv_loop_t * loop = lua_uv_loop(L);
 	uv_timer_t * timer = (uv_timer_t *)lua_newuserdata(L, sizeof(uv_timer_t));
@@ -18,12 +11,22 @@ int lua_uv_timer(lua_State * L) {
 	return 1;
 }
 
+int lua_uv_timer_cb_closure(lua_State * L) {
+	lua_pushvalue(L, lua_upvalueindex(1)); // handler
+	lua_pushvalue(L, lua_upvalueindex(2)); // udata
+	lua_call(L, 1, 0);	// pcall?
+	return 0;
+}
 void lua_uv_timer_cb(uv_timer_t* handle, int status) {
 	uv_loop_t * loop = handle->loop;
 	lua_State * L = (lua_State *)loop->data;
-	lua_pushlightuserdata(L, handle);
-	lua_rawget(L, LUA_REGISTRYINDEX);
-	lua_call(L, 0, 0);	// pcall?
+	
+	Lua C(lua_newthread(L));
+	
+	lua_pushlightuserdata(C, handle);
+	lua_rawget(C, LUA_REGISTRYINDEX);
+	C.resume(0);
+	//lua_call(L, 0, 0);	// pcall?
 }
 
 int lua_uv_timer_start(lua_State * L) {
