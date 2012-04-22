@@ -26,3 +26,5 @@ cpp.shared{
 	needs = { "uv", "lua" },
 	libflags = libflags,
 }
+
+target('install', 'uv', 'sudo cp $(DEPENDS) /usr/local/lib/lua/5.1/$(DEPENDS)')

@@ -66,9 +66,7 @@ int lua_uv_stream_read_stop(lua_State * L) {
 void lua_uv_stream_write_resume(uv_write_t * req, int status) {
 	dprintf("lua_uv_stream_write_resume\n");
 	lua_State * L = (lua_State *)req->data;
-	
 	callback_resume_after(L);	
-	
 	lua_pushinteger(L, status);
 	Lua(L).resume(1);	
 }
@@ -86,7 +84,6 @@ int lua_uv_stream_write(lua_State * L) {
 		uv_write_t * req = callback_resume_before<uv_write_t>(L, 1);
 		uv_buf_t * buf = lua_uv_buf_init(L, (char *)str, sz);
 		uv_write(req, s, buf, 1, lua_uv_stream_write_resume);
-		// keep these on the stack to prevent gc:
 		return lua_yield(L, 3);	
 	}
 }
@@ -143,9 +140,7 @@ int lua_uv_stream_accept(lua_State * L) {
 void lua_uv_stream_shutdown_resume(uv_shutdown_t * req, int status) {
 	dprintf("lua_uv_stream_shutdown_resume\n");
 	lua_State * L = (lua_State *)req->data;
-	
 	callback_resume_after(L);
-	
 	lua_pushinteger(L, status);
 	Lua(L).resume(1);	
 }
