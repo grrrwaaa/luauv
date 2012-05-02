@@ -12,6 +12,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include "luaopen_uv.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 int lua_uv_loop___tostring(lua_State * L) {

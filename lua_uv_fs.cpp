@@ -1,5 +1,8 @@
 #include "luaopen_uv.h"
 #include <fcntl.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 int lua_uv_string_to_flags(lua_State* L, const char* string) {
 	if (strcmp(string, "r") == 0) return O_RDONLY;
