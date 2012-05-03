@@ -1,14 +1,25 @@
 
+-- cd libuv
+-- make CFLAGS="-fPIC"
+-- cd ../
+-- mv libuv/uv.a <plat>/lib/libuv.a
+
 UV_INCLUDE_DIR = "libuv/include"
 UV_LIBS = "uv"
 
 local libflags
 
+local needs = { "uv", "lua" }
+
 if PLAT == "Darwin" then
 	UV_LIB_DIR = "osx/lib"
 	libflags = "-framework Cocoa"
 else
-	UV_LIB_DIR = "/usr/local/lib"
+	UV_LIB_DIR = "linux64/lib"
+
+	PTHREAD_DIR = '/usr/'
+	PTHREAD_LIBS = 'pthread rt'
+	needs[#needs+1] = "pthread"
 end
 
 cpp.shared{
@@ -16,8 +27,7 @@ cpp.shared{
 	src = { 
 		"*.cpp", 
 	},
-	needs = { "uv", "lua" },
+	needs = needs,
+	flags = "-Wno-unknown-pragmas",
 	libflags = libflags,
 }
-
-target('install', 'uv', 'sudo cp $(DEPENDS) /usr/local/lib/lua/5.1/$(DEPENDS)')
