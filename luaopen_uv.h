@@ -39,6 +39,7 @@ int lua_uv_fs_stat(lua_State * L);
 int lua_uv_tcp(lua_State * L);
 int lua_uv_tty(lua_State * L);
 int lua_uv_timer(lua_State * L);
+int lua_uv_event(lua_State * L);
 int lua_uv_handle_close(lua_State * L);
 
 // gets the uv loop for a given lua_State
